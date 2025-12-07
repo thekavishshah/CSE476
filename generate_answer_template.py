@@ -32,19 +32,28 @@ def load_questions(path: Path) -> List[Dict[str, Any]]:
         raise ValueError("Input file must contain a list of question objects.")
     return data
 
+def make_answer_short(x: str) -> str:
+    x = x.strip()
+    if not x:
+        return x
+    y = [p.strip() for p in x.splitlines() if p.strip()]
+    if y:
+        return y[-1]
+    return x
+
 def model_call(a: str) -> str:
     b = API_BASE + "/chat/completions"
-    c = {"Authorization": f"Bearer {API_KEY}","Content-Type": "application/json",}
-    d = {"model": MODEL, "messages": [ {"role": "system", "content": "You are a helpful assistant. Reply with only the final answer—no explanation."}, {"role": "user", "content": a},
-        ],"temperature": 0.0,"max_tokens": 256,}
+    c = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    d = {"model": MODEL, "messages": [{"role": "system","content": "You MUST reply with ONLY the final answer for the question. Do NOT include steps, explanations, or plans. Your reply must be a single short answer string only.",},
+        {"role": "user", "content": a,},],"temperature": 0.0, "max_tokens": 64,}
     e = requests.post(b, headers=c, json=d, timeout=60)
     if e.status_code != 200:
         return ""
     f = e.json()
     g = f.get("choices", [{}])[0].get("message", {}).get("content", "")
-    return (g or "").strip()
-
-
+    g = (g or "").strip()
+    g = make_answer_short(g)
+    return g
 
 def build_answers(questions: List[Dict[str, Any]]) -> List[Dict[str, str]]:
     answers = []
@@ -58,7 +67,7 @@ def build_answers(questions: List[Dict[str, Any]]) -> List[Dict[str, str]]:
         if not placeholder_answer:
             placeholder_answer = "Error"
         answers.append({"output": placeholder_answer})
-        print("Done question", idx)
+        print(idx)
     return answers
 
 
@@ -101,4 +110,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
